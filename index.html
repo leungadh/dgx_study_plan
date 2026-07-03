@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DGX Spark Study Tracker</title>
+<style>
+  :root {
+    --page:           #f9f9f7;
+    --surface:        #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --border:         rgba(11,11,11,0.10);
+    --hairline:       #e1e0d9;
+    --accent:         #2a78d6;
+    --accent-track:   #cde2fb;
+    --accent-tint:    rgba(42,120,214,0.10);
+    --good:           #0ca30c;
+    --good-text:      #006300;
+    --good-tint:      rgba(12,163,12,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:           #0d0d0d;
+      --surface:        #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --border:         rgba(255,255,255,0.10);
+      --hairline:       #2c2c2a;
+      --accent:         #3987e5;
+      --accent-track:   #0d366b;
+      --accent-tint:    rgba(57,135,229,0.16);
+      --good:           #0ca30c;
+      --good-text:      #0ca30c;
+      --good-tint:      rgba(12,163,12,0.16);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+  header .sub { color: var(--text-secondary); margin-top: 4px; font-size: 14px; }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 20px 0 8px;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .tile .label { font-size: 12.5px; color: var(--text-secondary); }
+  .tile .value { font-size: 30px; font-weight: 600; margin-top: 2px; letter-spacing: -0.01em; }
+  .tile .hint  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .meter {
+    height: 8px; border-radius: 4px; background: var(--accent-track);
+    overflow: hidden; margin-top: 10px;
+  }
+  .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .25s ease; }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 28px; }
+  .toolbar button, .toolbar label.btn {
+    font: 13px system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .toolbar button:hover, .toolbar label.btn:hover { color: var(--text-primary); border-color: var(--text-muted); }
+  .toolbar input[type=file] { display: none; }
+
+  .month { margin-top: 32px; }
+  .month-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .month-head h2 { font-size: 16px; font-weight: 650; }
+  .month-head .frac { font-size: 13px; color: var(--text-muted); }
+  .month .meter { max-width: 260px; margin: 8px 0 16px; }
+
+  details.week {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  details.week > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  details.week > summary::-webkit-details-marker { display: none; }
+  summary .chev { color: var(--text-muted); font-size: 11px; transition: transform .15s; flex: none; }
+  details[open] summary .chev { transform: rotate(90deg); }
+  summary .wtitle { font-weight: 600; font-size: 14.5px; }
+  summary .wsub { color: var(--text-secondary); font-size: 13px; }
+  summary .spacer { flex: 1; }
+  summary .wfrac { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  summary .mini {
+    width: 64px; height: 6px; border-radius: 3px; background: var(--accent-track);
+    overflow: hidden; flex: none;
+  }
+  summary .mini > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  summary .donebadge {
+    display: none; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 600; color: var(--good-text);
+    background: var(--good-tint); border-radius: 6px; padding: 2px 8px;
+    white-space: nowrap;
+  }
+  details.week.complete summary .donebadge { display: inline-flex; }
+  details.week.complete summary .mini > i { background: var(--good); }
+  details.week.current { border-color: var(--accent); }
+
+  .tasks { padding: 4px 16px 14px; border-top: 1px solid var(--hairline); }
+  .task {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0;
+  }
+  .task + .task { border-top: 1px solid var(--hairline); }
+  .task input[type=checkbox] {
+    width: 17px; height: 17px; margin-top: 2px; flex: none;
+    accent-color: var(--accent); cursor: pointer;
+  }
+  .task .body { flex: 1; }
+  .task .text { color: var(--text-primary); }
+  .task.done .text { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--hairline); }
+  .task .text a { color: var(--accent); text-decoration: none; }
+  .task .text a:hover { text-decoration: underline; }
+  .task .when { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .chip {
+    display: inline-block; font-size: 10.5px; font-weight: 650;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--text-muted);
+    border: 1px solid var(--hairline); border-radius: 5px;
+    padding: 1px 6px; margin-top: 3px; flex: none;
+    min-width: 76px; text-align: center;
+  }
+  .chip.milestone { color: var(--accent); border-color: transparent; background: var(--accent-tint); }
+  .task.done .chip.milestone { color: var(--good-text); background: var(--good-tint); }
+
+  .notes { padding: 0 16px 16px; }
+  .notes textarea {
+    width: 100%; min-height: 40px; resize: vertical;
+    font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px dashed var(--hairline); border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .notes textarea:focus { outline: none; border-color: var(--accent); color: var(--text-primary); }
+
+  .stretch-note { font-size: 13px; color: var(--text-muted); margin: 6px 0 14px; }
+  footer { margin-top: 40px; font-size: 13px; color: var(--text-muted); }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DGX Spark — 3-Month AI Study Tracker</h1>
+    <div class="sub">Pretraining, fine-tuning, quantization &amp; serving LLMs on the GB10 — capstone: a network-security domain assistant.</div>
+  </header>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="label">Overall progress</div>
+      <div class="value" id="t-pct">0%</div>
+      <div class="meter"><i id="t-meter" style="width:0%"></i></div>
+    </div>
+    <div class="tile">
+      <div class="label">Tasks completed</div>
+      <div class="value" id="t-tasks">0</div>
+      <div class="hint" id="t-tasks-hint"></div>
+    </div>
+    <div class="tile">
+      <div class="label">Milestones</div>
+      <div class="value" id="t-miles">0</div>
+      <div class="hint">weekly deliverables shipped</div>
+    </div>
+    <div class="tile">
+      <div class="label">Now working on</div>
+      <div class="value" id="t-week" style="font-size:22px; margin-top:8px;">—</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="btn-export">Export progress (JSON)</button>
+    <label class="btn">Import progress<input type="file" id="inp-import" accept=".json,application/json"></label>
+    <button id="btn-reset">Reset all</button>
+  </div>
+
+  <main id="app"></main>
+
+  <footer>
+    Habits that make it stick: one git repo, commit every session · keep a lab journal (use the notes on each week) ·
+    type code yourself, never paste · end each week explaining one concept aloud, Feynman-style.<br>
+    Progress is saved in this browser (localStorage) — use <b>Export</b> for a backup you can import on another device.
+    Plan source: <a href="https://github.com/leungadh/dgx_study_plan">github.com/leungadh/dgx_study_plan</a>
+  </footer>
+</div>
+
+<script>
+const PLAN = [
+  {
+    month: "Weekend 0 — Know Your Hardware",
+    weeks: [
+      { id: "w0", title: "Weekend 0", sub: "Setup: GB10, 128 GB unified memory, ARM64, DGX OS", tasks: [
+        { id: "w0-1", kind: "setup", text: 'Update DGX OS and verify <code>nvidia-smi</code> shows the GPU' },
+        { id: "w0-2", kind: "setup", text: "Install Docker + NVIDIA Container Toolkit (usually pre-installed)" },
+        { id: "w0-3", kind: "setup", text: 'Pull the NGC PyTorch container: <code>nvcr.io/nvidia/pytorch:25.xx-py3</code> (ARM64 wheels are patchy — prefer NGC)' },
+        { id: "w0-4", kind: "setup", text: 'Bookmark the <a href="https://build.nvidia.com/spark" target="_blank" rel="noopener">DGX Spark Playbooks</a> — official recipes for this exact machine' },
+        { id: "w0-5", kind: "setup", text: "Set up JupyterLab / VS Code Remote / Claude Code over SSH from the MacBook" },
+      ]},
+    ],
+  },
+  {
+    month: "Month 1 — PyTorch Fluency + GPU Fundamentals",
+    weeks: [
+      { id: "w1", title: "Week 1", sub: "Tensors, autograd, and the training loop", tasks: [
+        { id: "w1-s1", kind: "study", text: 'PyTorch <a href="https://pytorch.org/tutorials/beginner/basics/intro.html" target="_blank" rel="noopener">Learn the Basics</a> tutorial' },
+        { id: "w1-s2", kind: "study", text: 'Karpathy <a href="https://karpathy.ai/zero-to-hero.html" target="_blank" rel="noopener">Zero to Hero</a> videos 1–2 (micrograd, makemore)' },
+        { id: "w1-c1", kind: "code", text: "Re-implement micrograd's backprop by hand" },
+        { id: "w1-c2", kind: "code", text: "Rewrite it in PyTorch tensors on the GPU; verify gradients match <code>torch.autograd</code>" },
+        { id: "w1-d1", kind: "milestone", text: "Notebook: manual backprop vs autograd on CUDA, with CPU vs GPU timing" },
+      ]},
+      { id: "w2", title: "Week 2", sub: "Training real models — MLPs and CNNs", tasks: [
+        { id: "w2-s1", kind: "study", text: "PyTorch <code>nn.Module</code>, <code>DataLoader</code>, optimizers; makemore parts 2–3 (MLP, BatchNorm)" },
+        { id: "w2-c1", kind: "code", text: "Train an MLP language model on names data (makemore)" },
+        { id: "w2-c2", kind: "code", text: "Train a small CNN on CIFAR-10: LR finding, train/val curves, checkpointing" },
+        { id: "w2-d1", kind: "milestone", text: "CIFAR-10 model &gt;85% accuracy + a clean reusable <code>train.py</code> to extend all quarter" },
+      ]},
+      { id: "w3", title: "Week 3", sub: "How the GPU actually works (SRX SPU/NPU energy, but CUDA)", tasks: [
+        { id: "w3-s1", kind: "study", text: "<i>Programming Massively Parallel Processors</i> ch. 1–5" },
+        { id: "w3-s2", kind: "study", text: '<a href="https://github.com/gpu-mode/lectures" target="_blank" rel="noopener">GPU MODE</a> lectures 1–3: SMs, warps, blocks/grids, memory coalescing' },
+        { id: "w3-c1", kind: "code", text: "Write tiny CUDA kernels: vector add, naive matmul, tiled matmul with shared memory (compile with <code>nvcc</code>)" },
+        { id: "w3-c2", kind: "code", text: 'Call a custom kernel from PyTorch, or rewrite it in <a href="https://triton-lang.org" target="_blank" rel="noopener">Triton</a> (friendlier path)' },
+        { id: "w3-d1", kind: "milestone", text: "Naive vs tiled matmul benchmark + write-up on why tiling helps" },
+      ]},
+      { id: "w4", title: "Week 4", sub: "Profiling and performance", tasks: [
+        { id: "w4-s1", kind: "study", text: "PyTorch Profiler; <code>nsys</code> basics; mixed precision (bf16 autocast); <code>torch.compile</code>" },
+        { id: "w4-c1", kind: "code", text: "Profile the Week 2 CNN training and find the bottleneck" },
+        { id: "w4-c2", kind: "code", text: "Apply bf16, larger batch (128 GB!), <code>torch.compile</code>, more DataLoader workers — measure speedup at each step" },
+        { id: "w4-d1", kind: "milestone", text: "Before/after profiling report" },
+      ]},
+    ],
+  },
+  {
+    month: "Month 2 — Transformers From Scratch, Trained For Real",
+    weeks: [
+      { id: "w5", title: "Week 5", sub: "Rebuild GPT from scratch (no copying)", tasks: [
+        { id: "w5-s1", kind: "study", text: 'Re-watch <a href="https://www.youtube.com/watch?v=kCc8FmEb1nY" target="_blank" rel="noopener">"Let\'s build GPT"</a> — coding along from a blank file; <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">Illustrated Transformer</a> + <i>Attention Is All You Need</i> as reference' },
+        { id: "w5-c1", kind: "code", text: "Write your own <code>mingpt.py</code>: embeddings, multi-head causal self-attention, MLP block, residuals, LayerNorm, weight tying" },
+        { id: "w5-c2", kind: "code", text: 'Train on tiny Shakespeare; compare line-by-line against <a href="https://github.com/karpathy/nanoGPT" target="_blank" rel="noopener">nanoGPT</a> only <i>after</i> it works' },
+        { id: "w5-d1", kind: "milestone", text: "Your own GPT generating plausible Shakespeare + notes on every bug hit" },
+      ]},
+      { id: "w6", title: "Week 6", sub: "Tokenizers + scaling up training", tasks: [
+        { id: "w6-s1", kind: "study", text: 'Karpathy "Let\'s build the GPT Tokenizer"; BPE algorithm; nanoGPT train-loop internals (grad accumulation, cosine LR, weight decay, clipping)' },
+        { id: "w6-c1", kind: "code", text: "Implement a minimal BPE tokenizer yourself" },
+        { id: "w6-c2", kind: "code", text: "Train GPT-2-small (124M) on an OpenWebText / FineWeb-Edu sample on the Spark — bf16 + <code>torch.compile</code>, overnight run, loss curves in wandb/TensorBoard" },
+        { id: "w6-d1", kind: "milestone", text: "124M model trained to a respectable validation loss, with logged curves" },
+      ]},
+      { id: "w7", title: "Week 7", sub: "Modern architecture upgrades", tasks: [
+        { id: "w7-s1", kind: "study", text: "What changed since GPT-2: RoPE, RMSNorm, SwiGLU, GQA, KV cache (Llama 1/2/3 papers); FlashAttention IO-awareness concept" },
+        { id: "w7-c1", kind: "code", text: "Swap RoPE, RMSNorm, SwiGLU into the Week 5 model" },
+        { id: "w7-c2", kind: "code", text: "Implement a KV cache for generation; benchmark <code>scaled_dot_product_attention</code> vs manual attention" },
+        { id: "w7-d1", kind: "milestone", text: '"Llama-fied" mini model + KV-cache generation benchmark' },
+      ]},
+      { id: "w8", title: "Week 8", sub: "Consolidation + evaluation", tasks: [
+        { id: "w8-s1", kind: "study", text: 'Evals: perplexity, HellaSwag, MMLU basics; Karpathy "Let\'s reproduce GPT-2" + <a href="https://github.com/karpathy/build-nanogpt" target="_blank" rel="noopener">build-nanogpt</a>' },
+        { id: "w8-c1", kind: "code", text: "Add a HellaSwag eval to the training run" },
+        { id: "w8-c2", kind: "code", text: "One clean end-to-end run: tokenize → train → eval → sample" },
+        { id: "w8-d1", kind: "milestone", text: 'A short "what I built" README — you now understand the full pretraining stack' },
+      ]},
+    ],
+  },
+  {
+    month: "Month 3 — Fine-Tuning, Quantization, Inference & Capstone",
+    weeks: [
+      { id: "w9", title: "Week 9", sub: "Fine-tuning with LoRA/QLoRA", tasks: [
+        { id: "w9-s1", kind: "study", text: 'LoRA paper (2106.09685) + QLoRA paper (2305.14314); <a href="https://huggingface.co/docs/peft" target="_blank" rel="noopener">HF PEFT docs</a> and LLM course' },
+        { id: "w9-c1", kind: "code", text: "Implement LoRA <i>by hand</i> on your mini-GPT (~30 lines: replace Linear with W + BA)" },
+        { id: "w9-c2", kind: "code", text: 'QLoRA fine-tune Llama 3.1 8B on an instruction dataset with PEFT or <a href="https://github.com/unslothai/unsloth" target="_blank" rel="noopener">Unsloth</a>; optionally attempt a 70B QLoRA — 128 GB makes it possible' },
+        { id: "w9-d1", kind: "milestone", text: "A fine-tuned 8B model that follows your custom instruction format" },
+      ]},
+      { id: "w10", title: "Week 10", sub: "Quantization + local inference engines", tasks: [
+        { id: "w10-s1", kind: "study", text: "Quantization: int8, GPTQ/AWQ, GGUF k-quants, Blackwell NVFP4; how inference servers work (continuous batching, PagedAttention)" },
+        { id: "w10-c1", kind: "code", text: "Benchmark the same model on llama.cpp / Ollama (GGUF)" },
+        { id: "w10-c2", kind: "code", text: "Benchmark vLLM (use the DGX Spark playbook); optionally TensorRT-LLM with NVFP4" },
+        { id: "w10-d1", kind: "milestone", text: "Comparison table (engine × quant × tok/s × quality) + one engine as a persistent OpenAI-compatible API on the home network" },
+      ]},
+      { id: "w11", title: "Weeks 11–12", sub: "Capstone — Network-Security Domain Assistant", tasks: [
+        { id: "w11-c1", kind: "code", text: "Assemble the corpus: SRX notes, 5G core security (N1–N13, GTP, PFCP), Junos docs, MITRE ATT&CK mappings" },
+        { id: "w11-c2", kind: "code", text: "RAG pipeline: chunk → embed locally (bge-m3 / nomic-embed) → vector DB (Chroma / LanceDB) → retrieve + answer via the local model" },
+        { id: "w11-c3", kind: "code", text: 'Optional fine-tune: QLoRA on Q&amp;A pairs generated from the notes so it "speaks Junos" natively' },
+        { id: "w11-c4", kind: "code", text: "Eval set: 30–50 questions with known answers; score RAG vs fine-tune vs both" },
+        { id: "w11-d1", kind: "milestone", text: "A working local assistant queryable from the Mac + a write-up (portfolio-worthy)" },
+      ]},
+    ],
+  },
+  {
+    month: "Stretch Ideas (optional — not counted in progress)",
+    stretch: true,
+    weeks: [
+      { id: "ws", title: "Stretch", sub: "If you finish early or want a different angle", tasks: [
+        { id: "ws-1", kind: "stretch", text: "ML for network security: anomaly detection on NetFlow / packet-capture data" },
+        { id: "ws-2", kind: "stretch", text: "Implement draft-model speculative decoding on the local stack" },
+        { id: "ws-3", kind: "stretch", text: "Whisper on the Spark: transcribe/caption the England tour footage locally" },
+        { id: "ws-4", kind: "stretch", text: "Diffusion detour: run ComfyUI / Flux via the official playbook" },
+      ]},
+    ],
+  },
+];
+
+const KEY = "dgx-tracker-v1";
+const CHIP = { setup: "Setup", study: "Study", code: "Code", milestone: "Milestone", stretch: "Stretch" };
+
+let state = load();
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && typeof s === "object") return { tasks: s.tasks || {}, notes: s.notes || {} };
+  } catch (e) {}
+  return { tasks: {}, notes: {} };
+}
+function save() { localStorage.setItem(KEY, JSON.stringify({ version: 1, tasks: state.tasks, notes: state.notes })); }
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function build() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  for (const m of PLAN) {
+    const sec = document.createElement("section");
+    sec.className = "month";
+    sec.dataset.stretch = m.stretch ? "1" : "";
+    sec.innerHTML = `<div class="month-head"><h2>${m.month}</h2><span class="frac"></span></div>` +
+      (m.stretch ? "" : `<div class="meter"><i></i></div>`);
+    for (const w of m.weeks) {
+      const d = document.createElement("details");
+      d.className = "week";
+      d.id = "week-" + w.id;
+      d.innerHTML = `
+        <summary>
+          <span class="chev">▶</span>
+          <span class="wtitle">${w.title}</span>
+          <span class="wsub">· ${w.sub}</span>
+          <span class="spacer"></span>
+          <span class="donebadge">✓ Complete</span>
+          <span class="wfrac"></span>
+          <span class="mini"><i></i></span>
+        </summary>
+        <div class="tasks">${w.tasks.map(t => `
+          <div class="task" data-id="${t.id}">
+            <input type="checkbox" id="cb-${t.id}" aria-label="${CHIP[t.kind]} task">
+            <span class="chip ${t.kind === "milestone" ? "milestone" : ""}">${CHIP[t.kind]}</span>
+            <label class="body" for="cb-${t.id}"><span class="text">${t.text}</span><div class="when"></div></label>
+          </div>`).join("")}
+        </div>
+        <div class="notes"><textarea placeholder="Lab journal — bugs hit, fixes, benchmark numbers…" data-week="${w.id}"></textarea></div>`;
+      sec.appendChild(d);
+    }
+    app.appendChild(sec);
+  }
+
+  app.addEventListener("change", e => {
+    if (e.target.matches('input[type=checkbox]')) {
+      const id = e.target.closest(".task").dataset.id;
+      if (e.target.checked) state.tasks[id] = new Date().toISOString();
+      else delete state.tasks[id];
+      save(); refresh();
+    }
+  });
+  app.addEventListener("input", e => {
+    if (e.target.matches("textarea")) {
+      const w = e.target.dataset.week;
+      if (e.target.value.trim()) state.notes[w] = e.target.value; else delete state.notes[w];
+      save();
+    }
+  });
+}
+
+function refresh() {
+  let total = 0, done = 0, miles = 0, milesDone = 0, current = null, allWeeksDone = true;
+
+  for (const m of PLAN) {
+    let mTotal = 0, mDone = 0;
+    for (const w of m.weeks) {
+      let wDone = 0, latest = "";
+      for (const t of w.tasks) {
+        const ts = state.tasks[t.id];
+        const el = document.querySelector(`.task[data-id="${t.id}"]`);
+        el.classList.toggle("done", !!ts);
+        el.querySelector("input").checked = !!ts;
+        el.querySelector(".when").textContent = ts ? "done " + fmtDate(ts) : "";
+        if (ts) { wDone++; if (ts > latest) latest = ts; }
+        if (!m.stretch) {
+          total++; if (ts) done++;
+          if (t.kind === "milestone") { miles++; if (ts) milesDone++; }
+        }
+      }
+      mTotal += w.tasks.length; mDone += wDone;
+      const d = document.getElementById("week-" + w.id);
+      const complete = wDone === w.tasks.length;
+      d.classList.toggle("complete", complete);
+      d.querySelector(".wfrac").textContent = `${wDone}/${w.tasks.length}`;
+      d.querySelector(".mini > i").style.width = (100 * wDone / w.tasks.length) + "%";
+      d.querySelector(".donebadge").textContent = complete && latest ? "✓ " + fmtDate(latest) : "✓ Complete";
+      d.querySelector("textarea").value = state.notes[w.id] || "";
+      if (!m.stretch && !complete) { allWeeksDone = false; if (!current) current = w.title; }
+    }
+    const sec = [...document.querySelectorAll(".month")][PLAN.indexOf(m)];
+    sec.querySelector(".frac").textContent = `${mDone}/${mTotal} tasks`;
+    if (!m.stretch) sec.querySelector(".meter > i").style.width = (mTotal ? 100 * mDone / mTotal : 0) + "%";
+  }
+
+  const pct = total ? Math.round(100 * done / total) : 0;
+  document.getElementById("t-pct").textContent = pct + "%";
+  document.getElementById("t-meter").style.width = pct + "%";
+  document.getElementById("t-tasks").textContent = done;
+  document.getElementById("t-tasks-hint").textContent = `of ${total} core tasks`;
+  document.getElementById("t-miles").textContent = `${milesDone}/${miles}`;
+  document.getElementById("t-week").textContent = allWeeksDone ? "Done 🎉" : (current || "—");
+
+  // Expand the current week, collapse fully completed ones (only on load-style refreshes without focus)
+  document.querySelectorAll("details.week").forEach(d => d.classList.remove("current"));
+  if (current) {
+    const cw = [...document.querySelectorAll("details.week")].find(d => d.querySelector(".wtitle").textContent === current);
+    if (cw) cw.classList.add("current");
+  }
+}
+
+function openInitial() {
+  document.querySelectorAll("details.week").forEach(d => {
+    d.open = !d.classList.contains("complete");
+  });
+  const cur = document.querySelector("details.week.current");
+  if (cur) cur.open = true;
+}
+
+document.getElementById("btn-export").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({ version: 1, exported: new Date().toISOString(), tasks: state.tasks, notes: state.notes }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dgx-tracker-progress.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById("inp-import").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(txt => {
+    const s = JSON.parse(txt);
+    if (!s || typeof s.tasks !== "object") throw new Error("bad file");
+    state = { tasks: s.tasks || {}, notes: s.notes || {} };
+    save(); refresh(); openInitial();
+  }).catch(() => alert("Couldn't read that file — expected a JSON export from this tracker."));
+  e.target.value = "";
+});
+
+document.getElementById("btn-reset").addEventListener("click", () => {
+  if (confirm("Clear ALL progress and notes? Export a backup first if unsure.")) {
+    state = { tasks: {}, notes: {} };
+    save(); refresh(); openInitial();
+  }
+});
+
+build();
+refresh();
+openInitial();
+</script>
+</body>
+</html>
