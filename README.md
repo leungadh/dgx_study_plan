@@ -2,6 +2,8 @@
 
 A self-directed, 12-week curriculum for going from solid Transformer theory to **training, fine-tuning, quantizing, and serving LLMs** on an NVIDIA DGX Spark — plus a web-based tracker to keep the quarter on rails.
 
+**📊 Live tracker: [dgx-study-plan.onrender.com](https://dgx-study-plan.onrender.com)**
+
 The capstone ties it back to my day job: a locally served **RAG + fine-tuned network-security assistant** built over Juniper SRX and 5G core security notes, red-teamed against the OWASP LLM Top 10.
 
 ## What's in the repo
@@ -25,13 +27,14 @@ The capstone ties it back to my day job: a locally served **RAG + fine-tuned net
 
 A zero-dependency progress dashboard for the plan: every task as a checkbox with Study / Code / **Milestone** badges, per-week lab-journal notes, stat tiles, and progress meters. Light and dark mode.
 
+- **Live:** https://dgx-study-plan.onrender.com
 - **Run locally:** just open `index.html` in a browser.
 - **Persistence:** progress and notes live in the browser's `localStorage`; use **Export / Import (JSON)** to back up or move between devices.
 - **Editing the plan:** tasks are defined in the `PLAN` array at the top of the inline script. Give new tasks fresh IDs — saved progress is keyed by task ID.
 
 ## Deploying the tracker (free)
 
-**Render.com:** *New → Blueprint*, point it at this repo — `render.yaml` configures a static site publishing the repo root. Every push to `main` redeploys. (Or *New → Static Site* with an empty build command and `.` as the publish directory.)
+Deployed on **Render.com** at [dgx-study-plan.onrender.com](https://dgx-study-plan.onrender.com) — `render.yaml` configures a static site publishing the repo root, and every push to `main` redeploys automatically.
 
 **GitHub Pages works too:** *Settings → Pages → Deploy from branch* (`main`, root).
 
