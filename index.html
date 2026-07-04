@@ -273,18 +273,22 @@ const PLAN = [
         { id: "w6-s1", kind: "study", text: 'Karpathy "Let\'s build the GPT Tokenizer"; BPE algorithm; nanoGPT train-loop internals (grad accumulation, cosine LR, weight decay, clipping)' },
         { id: "w6-c1", kind: "code", text: "Implement a minimal BPE tokenizer yourself" },
         { id: "w6-c2", kind: "code", text: "Train GPT-2-small (124M) on an OpenWebText / FineWeb-Edu sample on the Spark — bf16 + <code>torch.compile</code>, overnight run, loss curves in wandb/TensorBoard" },
+        { id: "w6-c3", kind: "code", text: "Turn on activation/gradient checkpointing for one run; measure memory saved vs throughput cost" },
         { id: "w6-d1", kind: "milestone", text: "124M model trained to a respectable validation loss, with logged curves" },
       ]},
       { id: "w7", title: "Week 7", sub: "Modern architecture upgrades", tasks: [
         { id: "w7-s1", kind: "study", text: "What changed since GPT-2: RoPE, RMSNorm, SwiGLU, GQA, KV cache (Llama 1/2/3 papers); FlashAttention IO-awareness concept" },
+        { id: "w7-s2", kind: "study", text: "What came after dense Llama 3: mixture-of-experts routing + multi-head latent attention (MLA) — DeepSeek-V2/V3 papers" },
         { id: "w7-c1", kind: "code", text: "Swap RoPE, RMSNorm, SwiGLU into the Week 5 model" },
         { id: "w7-c2", kind: "code", text: "Implement a KV cache for generation; benchmark <code>scaled_dot_product_attention</code> vs manual attention" },
+        { id: "w7-c3", kind: "code", text: "Sampling &amp; decoding: temperature, top-p/min-p, repetition penalties, structured/constrained decoding — implement 2–3 and compare generations. Optional: toy top-k MoE layer (~50 lines)" },
         { id: "w7-d1", kind: "milestone", text: '"Llama-fied" mini model + KV-cache generation benchmark' },
       ]},
       { id: "w8", title: "Week 8", sub: "Consolidation + evaluation", tasks: [
         { id: "w8-s1", kind: "study", text: 'Evals: perplexity, HellaSwag, MMLU basics; Karpathy "Let\'s reproduce GPT-2" + <a href="https://github.com/karpathy/build-nanogpt" target="_blank" rel="noopener">build-nanogpt</a>' },
         { id: "w8-c1", kind: "code", text: "Add a HellaSwag eval to the training run" },
         { id: "w8-c2", kind: "code", text: "One clean end-to-end run: tokenize → train → eval → sample" },
+        { id: "w8-c3", kind: "code", text: 'Run EleutherAI <a href="https://github.com/EleutherAI/lm-evaluation-harness" target="_blank" rel="noopener">lm-evaluation-harness</a> against your model once — you\'ll reuse it in Week 10' },
         { id: "w8-d1", kind: "milestone", text: 'A short "what I built" README — you now understand the full pretraining stack' },
       ]},
     ],
@@ -292,24 +296,30 @@ const PLAN = [
   {
     month: "Month 3 — Fine-Tuning, Quantization, Inference & Capstone",
     weeks: [
-      { id: "w9", title: "Week 9", sub: "Fine-tuning with LoRA/QLoRA", tasks: [
+      { id: "w9", title: "Week 9", sub: "Fine-tuning with LoRA/QLoRA + preference tuning (DPO)", tasks: [
         { id: "w9-s1", kind: "study", text: 'LoRA paper (2106.09685) + QLoRA paper (2305.14314); <a href="https://huggingface.co/docs/peft" target="_blank" rel="noopener">HF PEFT docs</a> and LLM course' },
+        { id: "w9-s2", kind: "study", text: "DPO paper (2305.18290) — SFT → preference optimization is the standard post-training recipe" },
         { id: "w9-c1", kind: "code", text: "Implement LoRA <i>by hand</i> on your mini-GPT (~30 lines: replace Linear with W + BA)" },
         { id: "w9-c2", kind: "code", text: 'QLoRA fine-tune Llama 3.1 8B on an instruction dataset with PEFT or <a href="https://github.com/unslothai/unsloth" target="_blank" rel="noopener">Unsloth</a>; optionally attempt a 70B QLoRA — 128 GB makes it possible' },
-        { id: "w9-d1", kind: "milestone", text: "A fine-tuned 8B model that follows your custom instruction format" },
+        { id: "w9-c3", kind: "code", text: "DPO the SFT'd model on a preference dataset (e.g. UltraFeedback) with TRL's <code>DPOTrainer</code> or Unsloth" },
+        { id: "w9-d1", kind: "milestone", text: "A fine-tuned 8B model that follows your custom instruction format, plus a DPO'd variant" },
       ]},
       { id: "w10", title: "Week 10", sub: "Quantization + local inference engines", tasks: [
         { id: "w10-s1", kind: "study", text: "Quantization: int8, GPTQ/AWQ, GGUF k-quants, Blackwell NVFP4; how inference servers work (continuous batching, PagedAttention)" },
         { id: "w10-c1", kind: "code", text: "Benchmark the same model on llama.cpp / Ollama (GGUF)" },
         { id: "w10-c2", kind: "code", text: "Benchmark vLLM (use the DGX Spark playbook); optionally TensorRT-LLM with NVFP4" },
+        { id: "w10-c3", kind: "code", text: "Measure quality loss per quantization level with lm-evaluation-harness (perplexity + one benchmark) — numbers, not vibes" },
         { id: "w10-d1", kind: "milestone", text: "Comparison table (engine × quant × tok/s × quality) + one engine as a persistent OpenAI-compatible API on the home network" },
       ]},
       { id: "w11", title: "Weeks 11–12", sub: "Capstone — Network-Security Domain Assistant", tasks: [
         { id: "w11-c1", kind: "code", text: "Assemble the corpus: SRX notes, 5G core security (N1–N13, GTP, PFCP), Junos docs, MITRE ATT&CK mappings" },
         { id: "w11-c2", kind: "code", text: "RAG pipeline: chunk → embed locally (bge-m3 / nomic-embed) → vector DB (Chroma / LanceDB) → retrieve + answer via the local model" },
-        { id: "w11-c3", kind: "code", text: 'Optional fine-tune: QLoRA on Q&amp;A pairs generated from the notes so it "speaks Junos" natively' },
+        { id: "w11-c5", kind: "code", text: "Hybrid retrieval + reranking: add BM25 alongside vector search + a reranker (bge-reranker); ablate dense vs hybrid vs hybrid+rerank on the eval set — lexical often wins on acronym-dense Junos/3GPP text" },
+        { id: "w11-c3", kind: "code", text: 'Optional fine-tune: QLoRA on Q&amp;A pairs generated from the notes so it "speaks Junos" natively — dedup + quality-filter the synthetic pairs first (read the FineWeb blog post on data curation)' },
         { id: "w11-c4", kind: "code", text: "Eval set: 30–50 questions with known answers; score RAG vs fine-tune vs both" },
-        { id: "w11-d1", kind: "milestone", text: "A working local assistant queryable from the Mac + a write-up (portfolio-worthy)" },
+        { id: "w11-c6", kind: "code", text: 'Red-team the assistant: prompt injection incl. <i>indirect</i> injection via a poisoned RAG document — use the <a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/" target="_blank" rel="noopener">OWASP LLM Top 10</a> as the checklist' },
+        { id: "w11-c7", kind: "code", text: "Optional tool use: give the assistant a tool via function calling (Junos config-syntax checker, MITRE ATT&amp;CK lookup) — the agent-loop pattern" },
+        { id: "w11-d1", kind: "milestone", text: "A working local assistant queryable from the Mac + a write-up incl. red-team findings (portfolio-worthy)" },
       ]},
     ],
   },
@@ -318,6 +328,7 @@ const PLAN = [
     stretch: true,
     weeks: [
       { id: "ws", title: "Stretch", sub: "If you finish early or want a different angle", tasks: [
+        { id: "ws-5", kind: "stretch", text: "GRPO / reasoning-model fine-tune: train a small model with verifiable rewards (math/code correctness) via TRL's <code>GRPOTrainer</code> or Unsloth" },
         { id: "ws-1", kind: "stretch", text: "ML for network security: anomaly detection on NetFlow / packet-capture data" },
         { id: "ws-2", kind: "stretch", text: "Implement draft-model speculative decoding on the local stack" },
         { id: "ws-3", kind: "stretch", text: "Whisper on the Spark: transcribe/caption the England tour footage locally" },

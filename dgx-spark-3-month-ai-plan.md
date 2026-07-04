@@ -63,18 +63,18 @@ This is where your systems background pays off — think of it like learning SRX
 - **Deliverable:** Your own GPT generating plausible Shakespeare, plus notes on every bug you hit.
 
 ### Week 6: Tokenizers + scaling up training
-- **Study:** Karpathy's *"Let's build the GPT Tokenizer"* video; BPE algorithm; then nanoGPT's train loop internals (gradient accumulation, cosine LR schedule, weight decay, grad clipping)
-- **Code:** Implement a minimal BPE tokenizer yourself; then train nanoGPT's GPT-2-small (124M) config on OpenWebText subset or FineWeb-Edu sample on the Spark. Use bf16 + `torch.compile`. It will be slower than an H100 — that's fine; run overnight and track loss curves with wandb (https://wandb.ai) or TensorBoard.
+- **Study:** Karpathy's *"Let's build the GPT Tokenizer"* video; BPE algorithm; then nanoGPT's train loop internals (gradient accumulation, cosine LR schedule, weight decay, grad clipping); **activation/gradient checkpointing** — the standard memory-vs-compute trade
+- **Code:** Implement a minimal BPE tokenizer yourself; then train nanoGPT's GPT-2-small (124M) config on OpenWebText subset or FineWeb-Edu sample on the Spark. Use bf16 + `torch.compile`. It will be slower than an H100 — that's fine; run overnight and track loss curves with wandb (https://wandb.ai) or TensorBoard. Turn on activation checkpointing for one run and measure memory saved vs throughput cost (your Week 4 profiling skills apply directly).
 - **Deliverable:** A 124M model trained to a respectable validation loss, with logged curves.
 
 ### Week 7: Modern architecture upgrades
-- **Study:** What changed since GPT-2: **RoPE** (rotary embeddings), **RMSNorm**, **SwiGLU**, **grouped-query attention (GQA)**, **KV cache** — read the Llama papers (Llama 1/2/3 arXiv) and https://github.com/meta-llama/llama for reference code; FlashAttention concept (Tri Dao's paper — you don't need to implement it, just understand IO-awareness)
-- **Code:** Upgrade your Week 5 model: swap in RoPE, RMSNorm, SwiGLU. Implement a KV cache for generation and measure the speedup on long generations. Use `torch.nn.functional.scaled_dot_product_attention` (which dispatches to FlashAttention kernels) and benchmark vs your manual attention.
+- **Study:** What changed since GPT-2: **RoPE** (rotary embeddings), **RMSNorm**, **SwiGLU**, **grouped-query attention (GQA)**, **KV cache** — read the Llama papers (Llama 1/2/3 arXiv) and https://github.com/meta-llama/llama for reference code; FlashAttention concept (Tri Dao's paper — you don't need to implement it, just understand IO-awareness). Then what came *after* dense Llama 3: **mixture-of-experts** (expert routing) and **multi-head latent attention (MLA)** — read the DeepSeek-V2/V3 papers; most frontier open models are now MoE.
+- **Code:** Upgrade your Week 5 model: swap in RoPE, RMSNorm, SwiGLU. Implement a KV cache for generation and measure the speedup on long generations. Use `torch.nn.functional.scaled_dot_product_attention` (which dispatches to FlashAttention kernels) and benchmark vs your manual attention. Also study the **sampling step** your KV cache feeds: temperature, top-p/min-p, repetition penalties, and constrained/structured decoding (JSON-schema enforcement) — implement two or three and compare generations. Optional: a toy top-k-routed MoE layer in your mini-GPT (~50 lines).
 - **Deliverable:** "Llama-fied" mini model + KV-cache generation benchmark.
 
 ### Week 8: Consolidation + evaluation
 - **Study:** How LLMs are evaluated: perplexity, HellaSwag, MMLU basics; Karpathy's *"Let's reproduce GPT-2"* video and https://github.com/karpathy/build-nanogpt for the full modern training recipe
-- **Code:** Add a HellaSwag eval to your training run (build-nanogpt shows how). Do one clean end-to-end run: tokenize → train → eval → sample.
+- **Code:** Add a HellaSwag eval to your training run (build-nanogpt shows how). Do one clean end-to-end run: tokenize → train → eval → sample. Also run EleutherAI's **lm-evaluation-harness** (https://github.com/EleutherAI/lm-evaluation-harness) against your model once — it's the standard tool, and you'll reuse it in Week 10 to measure quantization quality loss.
 - **Deliverable:** A short "what I built" README for your repo. You now genuinely understand the full pretraining stack.
 
 ---
@@ -83,10 +83,10 @@ This is where your systems background pays off — think of it like learning SRX
 
 This month leans into what the Spark is uniquely good at: big-memory fine-tuning and local serving.
 
-### Week 9: Fine-tuning with LoRA/QLoRA
-- **Study:** LoRA paper (arXiv:2106.09685) — the math is simple and elegant; QLoRA paper (arXiv:2305.14314); Hugging Face PEFT docs (https://huggingface.co/docs/peft) and the HF LLM Course (https://huggingface.co/learn/llm-course)
-- **Code:** First implement LoRA *by hand* on your own mini-GPT (it's ~30 lines — replace a Linear with W + BA). Then use PEFT + `transformers` (or **Unsloth**, https://github.com/unslothai/unsloth, which has DGX Spark support) to QLoRA fine-tune **Llama 3.1 8B** on an instruction dataset. With 128GB you can also attempt a 70B QLoRA — an experiment almost no consumer hardware can do.
-- **Deliverable:** A fine-tuned 8B model that follows your custom instruction format.
+### Week 9: Fine-tuning with LoRA/QLoRA + preference tuning (DPO)
+- **Study:** LoRA paper (arXiv:2106.09685) — the math is simple and elegant; QLoRA paper (arXiv:2305.14314); **DPO paper (arXiv:2305.18290)** — SFT → preference optimization is the standard post-training recipe, and DPO's math is as elegant as LoRA's; Hugging Face PEFT docs (https://huggingface.co/docs/peft) and the HF LLM Course (https://huggingface.co/learn/llm-course)
+- **Code:** First implement LoRA *by hand* on your own mini-GPT (it's ~30 lines — replace a Linear with W + BA). Then use PEFT + `transformers` (or **Unsloth**, https://github.com/unslothai/unsloth, which has DGX Spark support) to QLoRA fine-tune **Llama 3.1 8B** on an instruction dataset. With 128GB you can also attempt a 70B QLoRA — an experiment almost no consumer hardware can do. Finally, **DPO the SFT'd model** on a preference dataset (e.g. UltraFeedback) with TRL's `DPOTrainer` or Unsloth — a few hours of work that completes the picture of how instruct models are actually made.
+- **Deliverable:** A fine-tuned 8B model that follows your custom instruction format, plus a DPO'd variant.
 
 ### Week 10: Quantization + local inference engines
 - **Study:** Quantization concepts: int8, GPTQ/AWQ, GGUF k-quants, and Blackwell's native **NVFP4**; how inference servers work: continuous batching, paged attention (vLLM paper)
@@ -94,6 +94,8 @@ This month leans into what the Spark is uniquely good at: big-memory fine-tuning
   1. **llama.cpp / Ollama** (GGUF) — https://github.com/ggml-org/llama.cpp
   2. **vLLM** — https://github.com/vllm-project/vllm (use the DGX Spark playbook)
   3. **TensorRT-LLM** with NVFP4 if you're feeling ambitious
+
+  Measure quality, not just speed: run lm-evaluation-harness (from Week 8) at each quantization level — perplexity plus one benchmark — so the "quality notes" column holds numbers, not vibes.
 - **Deliverable:** A comparison table: engine × quantization × tok/s × quality notes. Stand up one of them as a persistent OpenAI-compatible API on your home network.
 
 ### Weeks 11–12: Capstone — a Network-Security Domain Assistant
@@ -101,9 +103,12 @@ This is where your day job and your SRX/5G study notes become an asset:
 - **Build a RAG + fine-tuned assistant for network security.** Corpus: your Juniper SRX notes, 5G core security material (N1–N13, GTP, PFCP), Junos docs, MITRE ATT&CK mappings.
 - Components:
   1. **RAG pipeline**: chunk documents, embed with a local embedding model (e.g. `bge-m3` or `nomic-embed`), store in a vector DB (Chroma or LanceDB), retrieve + answer with your locally served model
-  2. **Optional fine-tune**: QLoRA the model on Q&A pairs generated from your notes so it "speaks Junos" natively
-  3. **Eval set**: 30–50 questions you know the answers to (e.g. "which SRX screen option mitigates X", "what does N4/PFCP expose") — score RAG vs fine-tune vs both
-- **Deliverable:** A working local assistant you can query from your Mac, plus a write-up. This is genuinely portfolio-worthy and useful at work.
+  2. **Hybrid retrieval + reranking**: add BM25 alongside the vector search and a reranker (e.g. `bge-reranker`) on the top-k, then ablate dense vs hybrid vs hybrid+rerank on your eval set — for terse, acronym-dense material like Junos config and 3GPP interface names, lexical search often beats embeddings, and you'll see it in your own numbers
+  3. **Optional fine-tune**: QLoRA the model on Q&A pairs generated from your notes so it "speaks Junos" natively. Treat the synthetic data as a first-class artifact: dedup and quality-filter the pairs before training on them (the FineWeb blog post is the best single read on data curation)
+  4. **Eval set**: 30–50 questions you know the answers to (e.g. "which SRX screen option mitigates X", "what does N4/PFCP expose") — score RAG vs fine-tune vs both
+  5. **Red-team your own assistant**: test it against prompt injection — including *indirect* injection through the RAG corpus (a poisoned document that hijacks the assistant) — using the OWASP LLM Top 10 (https://owasp.org/www-project-top-10-for-large-language-model-applications/) as the checklist. A network-security engineer who has built *and attacked* a local LLM deployment is a rare combination; this costs a day and belongs in the write-up
+  6. **Optional tool use**: give the assistant one or two tools via function calling — a Junos config-syntax checker, a MITRE ATT&CK lookup — to learn the agent-loop pattern that's now standard
+- **Deliverable:** A working local assistant you can query from your Mac, plus a write-up (including the red-team findings). This is genuinely portfolio-worthy and useful at work.
 
 ---
 
@@ -117,7 +122,8 @@ This is where your day job and your SRX/5G study notes become an asset:
 | GPU/CUDA | *Programming Massively Parallel Processors*; GPU MODE lectures; Triton docs |
 | Fine-tuning | HF PEFT + LLM course; Unsloth; LoRA/QLoRA papers |
 | Inference | llama.cpp, Ollama, vLLM docs, TensorRT-LLM |
-| Papers | Attention Is All You Need; GPT-2/3; Llama 1–3; LoRA; QLoRA; FlashAttention; vLLM (PagedAttention) |
+| Papers | Attention Is All You Need; GPT-2/3; Llama 1–3; LoRA; QLoRA; DPO; DeepSeek-V2/V3 (MLA, MoE); FlashAttention; vLLM (PagedAttention) |
+| LLM security | OWASP Top 10 for LLM Applications; Simon Willison on prompt injection — simonwillison.net/series/prompt-injection/ |
 
 ## Habits That Make It Stick
 - Keep **one git repo** for the whole quarter; commit every session
@@ -126,6 +132,7 @@ This is where your day job and your SRX/5G study notes become an asset:
 - End each week by explaining one concept out loud (or to Claude) with no notes — Feynman technique
 
 ## Stretch Ideas (if you finish early or want a different angle)
+- **GRPO / reasoning-model fine-tuning**: train a small model with verifiable rewards (math or code correctness) via TRL's `GRPOTrainer` or Unsloth — the post-2024 technique behind reasoning models, and the Spark's memory makes it feasible locally
 - **ML for network security**: train an anomaly-detection model on NetFlow/packet-capture data — directly relevant to your SRX/5G work
 - **Speculative decoding**: implement draft-model speculative decoding on your local stack
 - **Whisper + video**: use the Spark to transcribe/caption your England tour footage locally as an ffmpeg pipeline side-quest
